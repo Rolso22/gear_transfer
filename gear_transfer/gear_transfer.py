@@ -1,5 +1,5 @@
 import ctypes
-from multiprocessing import Process, Array, Value
+from multiprocessing import Array, Value
 
 
 class Transfer:
@@ -9,29 +9,33 @@ class Transfer:
         self.buffer_count = buffer_count
         self.buffer_size = buffer_size * 1024  # Kb -> bytes
         self.array = Array(ctypes.c_wchar * self.buffer_size, buffer_count)
-        self.value = Value('i', 0)
 
     def find(self):
-        while self.array[self.read_position].value == '':
-            if self.read_position == self.buffer_count:
-                self.read_position = 0
-                return None
+        with self.array.get_lock():
+            while self.array[self.read_position].value == '':
+                if self.read_position == self.buffer_count:
+                    self.read_position = 0
+                    return None
+                self.read_position += 1
+            print(f'get in {self.read_position}')
+            elem = self.array[self.read_position].value
+            self.array[self.read_position].value = ''
             self.read_position += 1
-        elem = self.array[self.read_position].value
-        self.array[self.read_position].value = ''
-        self.read_position += 1
-        return elem
+            return elem
 
     def get(self):
         return self.find()
 
     def put(self, data):
-        while self.array[self.write_position].value != '':
-            if self.write_position == self.buffer_count:
-                self.write_position = 0
-                raise "no place"
-            self.write_position += 1
+        with self.array.get_lock():
+            while self.array[self.write_position].value != '':
+                if self.write_position == self.buffer_count:
+                    self.write_position = 0
+                    raise "no place"
+                self.write_position += 1
 
-        self.array[self.write_position] = ctypes.create_unicode_buffer(data, self.buffer_size)
+            print(f'put in {self.write_position}')
+            self.array[self.write_position] = ctypes.create_unicode_buffer(data, self.buffer_size)
+            self.write_position += 1
 
 
