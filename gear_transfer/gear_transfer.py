@@ -8,7 +8,9 @@ class Transfer:
         self.write_position = 0
         self.buffer_count = buffer_count
         self.buffer_size = buffer_size * 1024  # Kb -> bytes
-        self.array = Array(ctypes.c_wchar * self.buffer_size, buffer_count)
+        self.array = Array(ctypes.c_char * self.buffer_size, buffer_count)
+        for i in range(self.buffer_count):
+            self.array[i] = ctypes.create_string_buffer(b'', self.buffer_size)
 
     def read_pos_inc(self):
         self.read_position += 1
@@ -26,7 +28,7 @@ class Transfer:
             while self.read_position != pos:
                 if self.read_position == self.buffer_count:
                     self.read_position = 0
-                if self.array[self.read_position].value != '':
+                if self.array[self.read_position].value != b'':
                     return self.get_elem()
                 else:
                     self.read_pos_inc()
@@ -34,9 +36,9 @@ class Transfer:
             return None
 
     def get_elem(self):
-        if self.array[self.read_position].value != '':
+        if self.array[self.read_position].value != b'':
             elem = self.array[self.read_position].value
-            self.array[self.read_position].value = ''
+            self.array[self.read_position].value = b''
             # print(f'get in {self.read_position} -> {self.read_position + 1}')
             self.read_pos_inc()
             return elem
@@ -51,9 +53,9 @@ class Transfer:
             return elem
 
     def put_elem(self, data):
-        if self.array[self.write_position].value == '':
+        if self.array[self.write_position].value == b'':
             # print(f'put in {self.write_position}')
-            self.array[self.write_position] = ctypes.create_unicode_buffer(data, self.buffer_size)
+            self.array[self.write_position] = ctypes.create_string_buffer(data, self.buffer_size)
             self.write_pos_inc()
             return True
         else:
@@ -67,7 +69,7 @@ class Transfer:
                 while self.write_position != pos:
                     if self.write_position == self.buffer_count:
                         self.write_position = 0
-                    if self.array[self.write_position].value == '':
+                    if self.array[self.write_position].value == b'':
                         self.put_elem(data)
                     else:
                         self.write_pos_inc()
