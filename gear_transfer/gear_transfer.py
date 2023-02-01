@@ -25,6 +25,7 @@ class Transfer:
     def find(self):
         with self.array.get_lock():
             pos = self.read_position
+            self.read_pos_inc()
             while self.read_position != pos:
                 if self.read_position == self.buffer_count:
                     self.read_position = 0
@@ -37,12 +38,10 @@ class Transfer:
 
     def get_elem(self):
         if self.array[self.read_position].value != b'':
-            elem = self.array[self.read_position].value
+            elem = self.array[self.read_position].raw.rstrip(b'\x00')
             self.array[self.read_position].value = b''
             # print(f'get in {self.read_position} -> {self.read_position + 1}')
-            self.read_pos_inc()
             return elem
-        self.read_pos_inc()
         return None
 
     def get(self):
@@ -50,6 +49,7 @@ class Transfer:
         if elem is None:
             return self.find()
         else:
+            self.read_pos_inc()
             return elem
 
     def put_elem(self, data):
@@ -64,8 +64,8 @@ class Transfer:
 
     def put(self, data):
         with self.array.get_lock():
+            pos = self.write_position
             if not self.put_elem(data):
-                pos = self.write_position
                 while self.write_position != pos:
                     if self.write_position == self.buffer_count:
                         self.write_position = 0
@@ -74,5 +74,10 @@ class Transfer:
                     else:
                         self.write_pos_inc()
                 self.write_position = 0
+                self.print_arr()
                 raise "no place"
 
+    def print_arr(self):
+        for i in range(len(self.array)):
+            print(self.array[i].raw.rstrip(b'\x00'), end=", ")
+        print()
